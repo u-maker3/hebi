@@ -72,6 +72,12 @@ linear-gradient(#7ec55d,#5ea647)}
 .mirokuStop{position:absolute;inset:0;z-index:60;background:#000c;display:grid;place-items:center;text-align:center;color:#fff;padding:25px}.mirokuStop img{width:min(55%,220px)}.mirokuStop b{display:block;font-size:29px;margin:8px}.mirokuStop span{font-weight:900}
 .frenzy{position:absolute;inset:0;z-index:55;pointer-events:none;border:10px solid #ffd32a;animation:frenzy .25s infinite alternate}@keyframes frenzy{to{border-width:20px;filter:hue-rotate(60deg)}}
 .eventText{position:absolute;z-index:56;top:38%;left:4%;right:4%;text-align:center;font-size:35px;font-weight:1000;color:#fff;text-shadow:0 4px #d22,0 0 14px #000;pointer-events:none;animation:eventpop .9s forwards}@keyframes eventpop{0%{transform:scale(.2)}35%{transform:scale(1.15)}100%{opacity:0}}
+
+.bossbox img.bossDodge{transition:.08s;position:relative}
+.bossTaunt{font-weight:1000;font-size:21px;min-height:30px;color:#fff;background:#d93636;border:3px solid #fff;border-radius:999px;padding:5px 12px;display:inline-block;margin:4px}
+.fakeBoss{position:absolute;z-index:31;width:30%;filter:drop-shadow(0 7px 6px #000);animation:fakepop .35s}
+@keyframes fakepop{0%{transform:scale(.1)}60%{transform:scale(1.1)}100%{transform:scale(1)}}
+.bossbox .bossName{font-size:16px;font-weight:1000;letter-spacing:.12em}
 </style>
 </head>
 <body>
@@ -167,22 +173,60 @@ function floatText(txt,cx,cy){
 function bossFight(){
  bossDone=true;clearInterval(spawnTimer);$$('.target,.roachRunner').forEach(x=>x.remove());combo=0;updateCombo();shout('来るで……');
  const v=document.createElement('div');v.className='bossveil';
- v.innerHTML=`<div class="bossbox"><h2>⚠️ BOSS 降臨 ⚠️</h2><div class="bossbar"><i id="bossHP"></i></div><div class="bosshelp">5秒で10回しばけ！</div><img id="bossTap" src="BOSS.PNG" alt="ボス"></div>`;
- stage.appendChild(v);let hp=10,left=5;
+ v.innerHTML=`<div class="bossbox"><div class="bossName">＼ 呼んでへんのに来ました ／</div><h2>⚠️ BOSS 降臨 ⚠️</h2><div class="bossbar"><i id="bossHP"></i></div><div class="bosshelp">7秒で12回しばけ！</div><div id="bossTaunt" class="bossTaunt">捕まえてみぃ〜🤣</div><img id="bossTap" class="bossDodge" src="BOSS.PNG" alt="ボス"></div>`;
+ stage.appendChild(v);let hp=12,left=7,hitCount=0;
  const boss=$('#bossTap'),help=v.querySelector('.bosshelp');
  boss.addEventListener('pointerdown',ev=>{
-  if(hp<=0)return; hp--; $('#bossHP').style.width=(hp*10)+'%'; stage.classList.add('shake');setTimeout(()=>stage.classList.remove('shake'),120);
-  const lines=['痛い！','顔はやめて！','話し合お！','まだや！','やめろて！'];floatText(lines[Math.floor(Math.random()*lines.length)],ev.clientX,ev.clientY);hammer(ev);
-  if(hp===0){score+=100;stats.boss=1;updateHud();help.textContent='撃破！ +100点　覚えとけよーー！';setTimeout(()=>{v.remove();if(running)spawnTimer=setInterval(spawn,500)},900)}
+  if(hp<=0)return; hp--; hitCount++;
+  $('#bossHP').style.width=(hp/12*100)+'%';
+  stage.classList.add('shake');setTimeout(()=>stage.classList.remove('shake'),120);
+  const lines=['痛いって！🤣','顔は商品やぞ！','暴力反対〜！','当たってへんし！','効いてませ〜ん🤣','今のノーカン！','話し合お？','その程度？','うめこ怖っ！','ゆきこ怖っ！'];
+  const taunts=['遅い遅い〜🤣','そこちゃうで〜','ワシ元気〜✨','もっと本気出して？','あと何発かな〜？','捕まらんで〜'];
+  floatText(lines[Math.floor(Math.random()*lines.length)],ev.clientX,ev.clientY);hammer(ev);
+  $('#bossTaunt').textContent=taunts[Math.floor(Math.random()*taunts.length)];
+  // Every third hit the boss dodges sideways/up-down.
+  if(hp>0 && hitCount%3===0){
+    boss.style.transform=`translate(${Math.round((Math.random()-.5)*150)}px,${Math.round((Math.random()-.5)*80)}px) rotate(${Math.round((Math.random()-.5)*18)}deg)`;
+  }
+  // Mid-fight decoy: fake boss briefly appears elsewhere.
+  if(hp===6){
+    const fake=document.createElement('img');fake.src='BOSS.PNG';fake.className='fakeBoss';
+    fake.style.left=(5+Math.random()*55)+'%';fake.style.top=(15+Math.random()*45)+'%';
+    fake.addEventListener('pointerdown',e=>{score-=10;updateHud();floatText('そっちはニセモノ〜🤣 −10',e.clientX,e.clientY);fake.remove()},{once:true});
+    stage.appendChild(fake);setTimeout(()=>fake.remove(),1600);
+  }
+  if(hp===0){
+    score+=150;stats.boss=1;updateHud();
+    $('#bossTaunt').textContent='……今日はこの辺にしといたるわ。';
+    help.textContent='撃破！ +150点';
+    boss.style.transform='scale(1.3) rotate(12deg)';
+    setTimeout(()=>{v.remove();if(running)spawnTimer=setInterval(spawn,500)},1200)
+  }
  });
- const bt=setInterval(()=>{left--;if(hp>0)help.textContent=`あと${left}秒！ 残り${hp}発`;if(left<=0){clearInterval(bt);if(hp>0){help.textContent='逃げられたーー！';setTimeout(()=>{v.remove();if(running)spawnTimer=setInterval(spawn,500)},700)} }},1000);
+ const bt=setInterval(()=>{
+ left--;
+ if(hp>0){
+   help.textContent=`あと${left}秒！ 残り${hp}発`;
+   if(left===4)$('#bossTaunt').textContent='時間なくなってきたで〜🤣';
+   if(left===2)$('#bossTaunt').textContent='ほらほら焦れ焦れ〜🤣';
+ }
+ if(left<=0){
+   clearInterval(bt);
+   if(hp>0){
+     $('#bossTaunt').textContent='はい時間切れ〜〜〜🤣';
+     help.textContent='BOSS「出直しておいで♡」';
+     boss.style.transform='translateY(-20px) rotate(-12deg) scale(1.15)';
+     setTimeout(()=>{v.remove();if(running)spawnTimer=setInterval(spawn,500)},1100)
+   }
+ }
+},1000);
 }
 function finish(){
  if(!running)return;running=false;clearInterval(spawnTimer);clearInterval(countTimer);stage.innerHTML='';game.style.display='none';result.style.display='block';
  $('#finalScore').textContent=score+'点';
  let j=score<=50?'ヘビに気ぃ遣いすぎ。':score<=150?'まあまあ仕留めた。':score<=250?'ヘビ界で指名手配。':'もう山に入らん方がええ。';
  $('#judge').textContent=player.name+'判定：'+j;
- let title=maxCombo>=15?'しばきの申し子':maxCombo>=10?'近所で噂のしばき屋':maxCombo>=5?'しばき見習い':'ヘビ界の平和主義者';$('#breakdown').innerHTML=`🏆 称号　${title}<br>🔥 最大コンボ　${maxCombo}<br>🐍 ヘビ　${stats.snake}匹<br>⚡ 高速ヘビ　${stats.fast}匹<br>🪳 爆走ゴキブリ　${stats.roach}匹<br>🌼 みろくまん誤爆　${stats.miroku}回 × −30点<br>👑 ボス撃破　${stats.boss?'成功 +100点':'失敗'}<br><span class="small">5コンボから×1.5、10コンボから×2。</span>`;
+ let title=maxCombo>=15?'しばきの申し子':maxCombo>=10?'近所で噂のしばき屋':maxCombo>=5?'しばき見習い':'ヘビ界の平和主義者';$('#breakdown').innerHTML=`🏆 称号　${title}<br>🔥 最大コンボ　${maxCombo}<br>🐍 ヘビ　${stats.snake}匹<br>⚡ 高速ヘビ　${stats.fast}匹<br>🪳 爆走ゴキブリ　${stats.roach}匹<br>🌼 みろくまん誤爆　${stats.miroku}回 × −30点<br>👑 ウザBOSS撃破　${stats.boss?'成功 +150点':'逃げられた'}<br><span class="small">5コンボから×1.5、10コンボから×2。</span>`;
 }
 })();
 </script>
