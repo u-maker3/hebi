@@ -63,6 +63,15 @@ linear-gradient(#7ec55d,#5ea647)}
 .small{font-size:12px;opacity:.75}
 .shake{animation:shake .18s}
 @keyframes shake{25%{transform:translateX(-7px)}50%{transform:translateX(7px)}75%{transform:translateX(-4px)}}
+
+.comboBadge{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:25;background:#fff7d9;border:3px solid #fff;border-radius:999px;padding:6px 14px;font-weight:1000;display:none}
+.whacker{position:absolute;z-index:45;width:31%;height:31%;object-fit:contain;pointer-events:none;animation:slam .28s ease-out forwards;filter:drop-shadow(0 7px 5px #0005)}
+@keyframes slam{0%{transform:translate(-30px,-60px) rotate(-35deg) scale(.55);opacity:0}65%{opacity:1;transform:rotate(8deg) scale(1.05)}100%{transform:rotate(15deg) scale(.9);opacity:0}}
+.roachRunner{position:absolute;z-index:16;font-size:64px;cursor:pointer;touch-action:manipulation;filter:drop-shadow(0 5px 3px #0005);animation:roachrun 2.1s linear forwards}
+@keyframes roachrun{from{left:-80px}25%{transform:rotate(20deg) translateY(25px)}50%{transform:rotate(-15deg) translateY(-15px)}75%{transform:rotate(25deg) translateY(20px)}to{left:110%}}
+.mirokuStop{position:absolute;inset:0;z-index:60;background:#000c;display:grid;place-items:center;text-align:center;color:#fff;padding:25px}.mirokuStop img{width:min(55%,220px)}.mirokuStop b{display:block;font-size:29px;margin:8px}.mirokuStop span{font-weight:900}
+.frenzy{position:absolute;inset:0;z-index:55;pointer-events:none;border:10px solid #ffd32a;animation:frenzy .25s infinite alternate}@keyframes frenzy{to{border-width:20px;filter:hue-rotate(60deg)}}
+.eventText{position:absolute;z-index:56;top:38%;left:4%;right:4%;text-align:center;font-size:35px;font-weight:1000;color:#fff;text-shadow:0 4px #d22,0 0 14px #000;pointer-events:none;animation:eventpop .9s forwards}@keyframes eventpop{0%{transform:scale(.2)}35%{transform:scale(1.15)}100%{opacity:0}}
 </style>
 </head>
 <body>
@@ -84,7 +93,7 @@ linear-gradient(#7ec55d,#5ea647)}
 <img id="playerMini" src="UMEKO.PNG" alt="">
 <div id="timer" class="badge">30秒</div>
 </div>
-<div id="stage" class="stage"></div>
+<div id="stage" class="stage"><div id="comboBadge" class="comboBadge"></div></div>
 </section>
 
 <section id="result" class="panel">
@@ -100,7 +109,7 @@ linear-gradient(#7ec55d,#5ea647)}
 const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
 const select=$('#select'), game=$('#game'), result=$('#result'), stage=$('#stage');
 let player={name:'うめこ',img:'UMEKO.PNG'}, score=0,time=30,running=false,spawnTimer,countTimer;
-let stats={snake:0,roach:0,miroku:0,boss:0}, bossDone=false;
+let stats={snake:0,fast:0,roach:0,miroku:0,boss:0}, bossDone=false; let combo=0,maxCombo=0,paused=false,frenzyDone=false;
 const spots=[
 [2,10],[35.5,8],[69,10],[2,38],[35.5,36],[69,38],[2,66],[35.5,64],[69,66]
 ];
@@ -110,48 +119,60 @@ $$('.player').forEach(b=>b.onclick=()=>{
 });
 $('#start').onclick=startGame; $('#again').onclick=()=>{result.style.display='none';select.style.display='block'};
 function startGame(){
- score=0;time=30;running=true;bossDone=false;stats={snake:0,roach:0,miroku:0,boss:0};
+ score=0;time=30;running=true;bossDone=false;paused=false;frenzyDone=false;combo=0;maxCombo=0;stats={snake:0,fast:0,roach:0,miroku:0,boss:0};
  select.style.display='none';result.style.display='none';game.style.display='block';
- $('#playerMini').src=player.img; updateHud(); stage.innerHTML='';
+ $('#playerMini').src=player.img; updateHud(); stage.innerHTML='<div id="comboBadge" class="comboBadge"></div>';
  spawn(); spawnTimer=setInterval(spawn,650);
- countTimer=setInterval(()=>{time--;updateHud(); if(time===8&&!bossDone) bossFight(); if(time<=0) finish()},1000);
+ countTimer=setInterval(()=>{if(paused)return;time--;updateHud();if(time===18&&!frenzyDone)frenzy();if(time===8&&!bossDone)bossFight();if(time<=0)finish()},1000);
 }
 function updateHud(){ $('#score').textContent=score+'点';$('#timer').textContent=time+'秒' }
 function spawn(){
- if(!running || stage.querySelector('.bossveil')) return;
- if(stage.querySelectorAll('.target').length>=3)return;
- const r=Math.random(); let type=r<.68?'snake':r<.88?'roach':'miroku';
+ if(!running||paused||stage.querySelector('.bossveil'))return;
+ if(stage.querySelectorAll('.target').length>=4)return;
+ const r=Math.random();if(r<.14){spawnRoach();return}
+ let type=r<.70?'snake':r<.82?'fast':'miroku';
  const el=document.createElement('div');el.className='target';el.dataset.type=type;
  const [x,y]=spots[Math.floor(Math.random()*spots.length)];el.style.left=x+'%';el.style.top=y+'%';
- if(type==='snake') el.innerHTML='<span class="emoji snake">🐍</span>';
- if(type==='roach') el.innerHTML='<span class="emoji">🪳</span>';
- if(type==='miroku') el.innerHTML='<img src="MIROKUMAN.PNG" alt="みろくまん">';
- el.addEventListener('pointerdown',hit,{once:true}); stage.appendChild(el);
- const life=Math.max(420,1000-(30-time)*18);
- setTimeout(()=>el.remove(),life);
+ if(type==='snake')el.innerHTML='<span class="emoji snake">🐍</span>';
+ if(type==='fast')el.innerHTML='<span class="emoji snake" style="filter:drop-shadow(0 0 9px #ff0)">🐍</span>';
+ if(type==='miroku')el.innerHTML='<img src="MIROKUMAN.PNG" alt="みろくまん">';
+ el.addEventListener('pointerdown',hit,{once:true});stage.appendChild(el);
+ setTimeout(()=>el.remove(),type==='fast'?390:850)
+}
+function spawnRoach(){
+ const el=document.createElement('div');el.className='roachRunner';el.textContent='🪳';el.style.top=(15+Math.random()*70)+'%';
+ el.addEventListener('pointerdown',e=>{if(!running||paused)return;stats.roach++;goodHit(e,3,'+3');el.remove()},{once:true});
+ stage.appendChild(el);setTimeout(()=>el.remove(),2200)
 }
 function hit(e){
- if(!running)return; const el=e.currentTarget,type=el.dataset.type;
- let pts=0,msg='';
- if(type==='snake'){pts=10;stats.snake++;msg='+10'}
- if(type==='roach'){pts=3;stats.roach++;msg='+3'}
- if(type==='miroku'){pts=-30;stats.miroku++;msg='叩いたらアカン！ −30'; stage.classList.add('shake');setTimeout(()=>stage.classList.remove('shake'),200)}
- score+=pts; updateHud(); el.classList.add('hit'); floatText(msg,e.clientX,e.clientY);
- setTimeout(()=>el.remove(),170);
+ if(!running||paused)return;const el=e.currentTarget,type=el.dataset.type;
+ if(type==='miroku'){stats.miroku++;score-=30;combo=0;updateCombo();updateHud();hammer(e);el.remove();mirokuPenalty();return}
+ let pts=type==='fast'?20:10;if(type==='fast')stats.fast++;else stats.snake++;
+ goodHit(e,pts,'+'+pts);el.classList.add('hit');setTimeout(()=>el.remove(),170)
 }
+function goodHit(e,base,msg){
+ combo++;maxCombo=Math.max(maxCombo,combo);let mult=combo>=10?2:combo>=5?1.5:1;
+ score+=Math.round(base*mult);updateHud();updateCombo();hammer(e);floatText(msg+(mult>1?' ×'+mult:''),e.clientX,e.clientY);
+ if(combo===3)shout('ええぞ！');if(combo===5)shout('いてまえ！');if(combo===10)shout('しばき神 降臨')
+}
+function updateCombo(){const c=$('#comboBadge');if(!c)return;if(combo>=2){c.style.display='block';c.textContent='🔥 '+combo+' COMBO'+(combo>=10?' ×2':combo>=5?' ×1.5':'')}else c.style.display='none'}
+function hammer(e){const r=stage.getBoundingClientRect(),w=document.createElement('img');w.className='whacker';w.src=player.img;w.style.left=Math.max(-10,Math.min(r.width-120,e.clientX-r.left-65))+'px';w.style.top=Math.max(-10,Math.min(r.height-130,e.clientY-r.top-85))+'px';stage.appendChild(w);setTimeout(()=>w.remove(),300)}
+function shout(t){const d=document.createElement('div');d.className='eventText';d.textContent=t;stage.appendChild(d);setTimeout(()=>d.remove(),950)}
+function mirokuPenalty(){paused=true;const d=document.createElement('div');d.className='mirokuStop';d.innerHTML='<div><img src="MIROKUMAN.PNG"><b>……今、みろくまん叩いたな？</b><span>神聖なるみろくまんに −30点。</span></div>';stage.appendChild(d);setTimeout(()=>{d.remove();paused=false},1200)}
+function frenzy(){frenzyDone=true;shout('⚠️ 全員集合タイム ⚠️');const f=document.createElement('div');f.className='frenzy';stage.appendChild(f);let n=0,iv=setInterval(()=>{if(!running){clearInterval(iv);return}spawn();spawn();if(++n>=7){clearInterval(iv);f.remove()}},260)}
 function floatText(txt,cx,cy){
  const r=stage.getBoundingClientRect(),d=document.createElement('div');d.className='float';d.textContent=txt;
  d.style.left=Math.max(5,Math.min(r.width-150,cx-r.left-30))+'px';d.style.top=(cy-r.top-20)+'px';stage.appendChild(d);setTimeout(()=>d.remove(),750)
 }
 function bossFight(){
- bossDone=true; clearInterval(spawnTimer); $$('.target').forEach(x=>x.remove());
+ bossDone=true;clearInterval(spawnTimer);$$('.target,.roachRunner').forEach(x=>x.remove());combo=0;updateCombo();shout('来るで……');
  const v=document.createElement('div');v.className='bossveil';
  v.innerHTML=`<div class="bossbox"><h2>⚠️ BOSS 降臨 ⚠️</h2><div class="bossbar"><i id="bossHP"></i></div><div class="bosshelp">5秒で10回しばけ！</div><img id="bossTap" src="BOSS.PNG" alt="ボス"></div>`;
  stage.appendChild(v);let hp=10,left=5;
  const boss=$('#bossTap'),help=v.querySelector('.bosshelp');
  boss.addEventListener('pointerdown',ev=>{
   if(hp<=0)return; hp--; $('#bossHP').style.width=(hp*10)+'%'; stage.classList.add('shake');setTimeout(()=>stage.classList.remove('shake'),120);
-  floatText('いてっ！',ev.clientX,ev.clientY);
+  const lines=['痛い！','顔はやめて！','話し合お！','まだや！','やめろて！'];floatText(lines[Math.floor(Math.random()*lines.length)],ev.clientX,ev.clientY);hammer(ev);
   if(hp===0){score+=100;stats.boss=1;updateHud();help.textContent='撃破！ +100点　覚えとけよーー！';setTimeout(()=>{v.remove();if(running)spawnTimer=setInterval(spawn,500)},900)}
  });
  const bt=setInterval(()=>{left--;if(hp>0)help.textContent=`あと${left}秒！ 残り${hp}発`;if(left<=0){clearInterval(bt);if(hp>0){help.textContent='逃げられたーー！';setTimeout(()=>{v.remove();if(running)spawnTimer=setInterval(spawn,500)},700)} }},1000);
@@ -161,7 +182,7 @@ function finish(){
  $('#finalScore').textContent=score+'点';
  let j=score<=50?'ヘビに気ぃ遣いすぎ。':score<=150?'まあまあ仕留めた。':score<=250?'ヘビ界で指名手配。':'もう山に入らん方がええ。';
  $('#judge').textContent=player.name+'判定：'+j;
- $('#breakdown').innerHTML=`🐍 ヘビ　${stats.snake}匹 × 10点<br>🪳 ゴキブリ　${stats.roach}匹 × 3点<br>🌼 みろくまん誤爆　${stats.miroku}回 × −30点<br>👑 ボス撃破　${stats.boss?'成功 +100点':'失敗'}<br><span class="small">※得点はゲーム内の遊び用です。</span>`;
+ let title=maxCombo>=15?'しばきの申し子':maxCombo>=10?'近所で噂のしばき屋':maxCombo>=5?'しばき見習い':'ヘビ界の平和主義者';$('#breakdown').innerHTML=`🏆 称号　${title}<br>🔥 最大コンボ　${maxCombo}<br>🐍 ヘビ　${stats.snake}匹<br>⚡ 高速ヘビ　${stats.fast}匹<br>🪳 爆走ゴキブリ　${stats.roach}匹<br>🌼 みろくまん誤爆　${stats.miroku}回 × −30点<br>👑 ボス撃破　${stats.boss?'成功 +100点':'失敗'}<br><span class="small">5コンボから×1.5、10コンボから×2。</span>`;
 }
 })();
 </script>
