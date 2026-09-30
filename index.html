@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>ヘビしばき。</title>
+<style>
+:root{--ink:#3b291f;--cream:#fff8df;--red:#e94c45;--green:#65a94f;--gold:#f7c744}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:#efe1ba;color:var(--ink);overflow-x:hidden}
+body{min-height:100svh;background:radial-gradient(circle at 50% 10%,#fff7d9 0 20%,transparent 45%),linear-gradient(#9bd9ef 0 35%,#9bc96e 35% 100%)}
+button{font:inherit}
+.wrap{width:min(100%,520px);min-height:100svh;margin:auto;position:relative;padding:16px 14px 24px}
+.panel{background:rgba(255,252,236,.94);border:4px solid #fff;border-radius:28px;box-shadow:0 12px 30px #54351f35;padding:18px}
+h1{font-size:clamp(38px,12vw,62px);margin:5px 0 0;text-align:center;letter-spacing:-.08em;text-shadow:0 4px #fff}
+.sub{text-align:center;font-weight:900;margin:5px 0 18px}
+.players{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.player{border:4px solid transparent;border-radius:24px;background:#fff;padding:8px;box-shadow:0 6px 14px #5c43282b;position:relative}
+.player.selected{border-color:var(--gold);transform:translateY(-3px)}
+.player img{width:100%;aspect-ratio:1/1;object-fit:contain}
+.player b{display:block;font-size:20px}
+.start,.again{width:100%;border:0;border-bottom:6px solid #a62f2b;border-radius:18px;background:var(--red);color:#fff;font-weight:1000;font-size:24px;padding:14px;margin-top:18px}
+.note{text-align:center;font-size:13px;font-weight:700;margin-top:12px}
+#game,#result{display:none}
+.hud{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;margin-bottom:8px}
+.badge{background:#fff9e6;border:3px solid #fff;border-radius:18px;padding:7px 10px;font-weight:1000;box-shadow:0 4px 10px #0002}
+#score{text-align:left}#timer{text-align:right}
+#playerMini{width:70px;height:70px;object-fit:contain;filter:drop-shadow(0 5px 4px #0003)}
+.stage{position:relative;height:min(70svh,640px);min-height:500px;border:5px solid #fff7d9;border-radius:28px;overflow:hidden;background:
+radial-gradient(ellipse at 16% 24%,#5b371d 0 7%,#2b1c12 8% 10%,transparent 11%),
+radial-gradient(ellipse at 50% 22%,#5b371d 0 7%,#2b1c12 8% 10%,transparent 11%),
+radial-gradient(ellipse at 84% 24%,#5b371d 0 7%,#2b1c12 8% 10%,transparent 11%),
+radial-gradient(ellipse at 16% 52%,#5b371d 0 7%,#2b1c12 8% 10%,transparent 11%),
+radial-gradient(ellipse at 50% 50%,#5b371d 0 7%,#2b1c12 8% 10%,transparent 11%),
+radial-gradient(ellipse at 84% 52%,#5b371d 0 7%,#2b1c12 8% 10%,transparent 11%),
+radial-gradient(ellipse at 16% 80%,#5b371d 0 7%,#2b1c12 8% 10%,transparent 11%),
+radial-gradient(ellipse at 50% 78%,#5b371d 0 7%,#2b1c12 8% 10%,transparent 11%),
+radial-gradient(ellipse at 84% 80%,#5b371d 0 7%,#2b1c12 8% 10%,transparent 11%),
+linear-gradient(#7ec55d,#5ea647)}
+.target{position:absolute;width:29%;height:24%;display:grid;place-items:center;user-select:none;touch-action:manipulation;cursor:pointer;animation:pop .13s ease-out}
+.target img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 5px 3px #0004)}
+.emoji{font-size:clamp(54px,18vw,88px);filter:drop-shadow(0 5px 3px #0004)}
+.snake{font-size:clamp(65px,21vw,104px)}
+@keyframes pop{from{transform:scale(.15) translateY(50px)}to{transform:scale(1)}}
+.hit{animation:whack .18s both}
+@keyframes whack{to{transform:scale(.25) rotate(20deg);opacity:0}}
+.float{position:absolute;z-index:20;font-weight:1000;font-size:24px;pointer-events:none;animation:float .7s forwards;text-shadow:0 2px #fff}
+@keyframes float{to{transform:translateY(-60px) scale(1.3);opacity:0}}
+.flash{position:absolute;inset:0;background:#fff8;z-index:18;pointer-events:none;animation:fade .18s forwards}
+@keyframes fade{to{opacity:0}}
+.bossveil{position:absolute;inset:0;background:#0008;z-index:30;display:grid;place-items:center}
+.bossbox{text-align:center;color:#fff;width:96%}
+.bossbox h2{font-size:42px;margin:0;color:#ffd83e;text-shadow:0 4px #9b1b17}
+.bossbox img{width:min(90%,400px);max-height:420px;object-fit:contain;filter:drop-shadow(0 8px 10px #000)}
+.bossbar{height:24px;background:#fff;border-radius:99px;overflow:hidden;margin:0 20px 10px}
+.bossbar i{display:block;height:100%;width:100%;background:#e64b43;transition:.08s}
+.bosshelp{font-weight:1000;font-size:18px}
+#bossTap{touch-action:manipulation}
+.resultTitle{text-align:center;font-size:38px;margin:4px 0}
+.bigscore{text-align:center;font-size:68px;font-weight:1000;color:var(--red);line-height:1}
+.judge{text-align:center;font-size:24px;font-weight:1000;margin:15px 0}
+.breakdown{background:#fff;border-radius:18px;padding:12px 16px;font-weight:800;line-height:1.8}
+.small{font-size:12px;opacity:.75}
+.shake{animation:shake .18s}
+@keyframes shake{25%{transform:translateX(-7px)}50%{transform:translateX(7px)}75%{transform:translateX(-4px)}}
+</style>
+</head>
+<body>
+<main class="wrap">
+<section id="select" class="panel">
+<h1>ヘビしばき。</h1>
+<p class="sub">誰でしばく？ 🔨</p>
+<div class="players">
+<button class="player selected" data-name="うめこ" data-img="UMEKO.PNG"><img src="UMEKO.PNG" alt="うめこ"><b>うめこ</b></button>
+<button class="player" data-name="ゆきこ" data-img="YUKIKO.PNG"><img src="YUKIKO.PNG" alt="ゆきこ"><b>ゆきこ</b></button>
+</div>
+<button id="start" class="start">しばきに行く</button>
+<p class="note">🐍 ヘビ +10　🪳 ゴキブリ +3<br>みろくまんは叩いたらアカン −30</p>
+</section>
+
+<section id="game">
+<div class="hud">
+<div id="score" class="badge">0点</div>
+<img id="playerMini" src="UMEKO.PNG" alt="">
+<div id="timer" class="badge">30秒</div>
+</div>
+<div id="stage" class="stage"></div>
+</section>
+
+<section id="result" class="panel">
+<h2 class="resultTitle">しばき終了。</h2>
+<div id="finalScore" class="bigscore">0</div>
+<div id="judge" class="judge"></div>
+<div id="breakdown" class="breakdown"></div>
+<button id="again" class="again">もう一回しばく</button>
+</section>
+</main>
+<script>
+(()=>{
+const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
+const select=$('#select'), game=$('#game'), result=$('#result'), stage=$('#stage');
+let player={name:'うめこ',img:'UMEKO.PNG'}, score=0,time=30,running=false,spawnTimer,countTimer;
+let stats={snake:0,roach:0,miroku:0,boss:0}, bossDone=false;
+const spots=[
+[2,10],[35.5,8],[69,10],[2,38],[35.5,36],[69,38],[2,66],[35.5,64],[69,66]
+];
+$$('.player').forEach(b=>b.onclick=()=>{
+ $$('.player').forEach(x=>x.classList.remove('selected')); b.classList.add('selected');
+ player={name:b.dataset.name,img:b.dataset.img};
+});
+$('#start').onclick=startGame; $('#again').onclick=()=>{result.style.display='none';select.style.display='block'};
+function startGame(){
+ score=0;time=30;running=true;bossDone=false;stats={snake:0,roach:0,miroku:0,boss:0};
+ select.style.display='none';result.style.display='none';game.style.display='block';
+ $('#playerMini').src=player.img; updateHud(); stage.innerHTML='';
+ spawn(); spawnTimer=setInterval(spawn,650);
+ countTimer=setInterval(()=>{time--;updateHud(); if(time===8&&!bossDone) bossFight(); if(time<=0) finish()},1000);
+}
+function updateHud(){ $('#score').textContent=score+'点';$('#timer').textContent=time+'秒' }
+function spawn(){
+ if(!running || stage.querySelector('.bossveil')) return;
+ if(stage.querySelectorAll('.target').length>=3)return;
+ const r=Math.random(); let type=r<.68?'snake':r<.88?'roach':'miroku';
+ const el=document.createElement('div');el.className='target';el.dataset.type=type;
+ const [x,y]=spots[Math.floor(Math.random()*spots.length)];el.style.left=x+'%';el.style.top=y+'%';
+ if(type==='snake') el.innerHTML='<span class="emoji snake">🐍</span>';
+ if(type==='roach') el.innerHTML='<span class="emoji">🪳</span>';
+ if(type==='miroku') el.innerHTML='<img src="MIROKUMAN.PNG" alt="みろくまん">';
+ el.addEventListener('pointerdown',hit,{once:true}); stage.appendChild(el);
+ const life=Math.max(420,1000-(30-time)*18);
+ setTimeout(()=>el.remove(),life);
+}
+function hit(e){
+ if(!running)return; const el=e.currentTarget,type=el.dataset.type;
+ let pts=0,msg='';
+ if(type==='snake'){pts=10;stats.snake++;msg='+10'}
+ if(type==='roach'){pts=3;stats.roach++;msg='+3'}
+ if(type==='miroku'){pts=-30;stats.miroku++;msg='叩いたらアカン！ −30'; stage.classList.add('shake');setTimeout(()=>stage.classList.remove('shake'),200)}
+ score+=pts; updateHud(); el.classList.add('hit'); floatText(msg,e.clientX,e.clientY);
+ setTimeout(()=>el.remove(),170);
+}
+function floatText(txt,cx,cy){
+ const r=stage.getBoundingClientRect(),d=document.createElement('div');d.className='float';d.textContent=txt;
+ d.style.left=Math.max(5,Math.min(r.width-150,cx-r.left-30))+'px';d.style.top=(cy-r.top-20)+'px';stage.appendChild(d);setTimeout(()=>d.remove(),750)
+}
+function bossFight(){
+ bossDone=true; clearInterval(spawnTimer); $$('.target').forEach(x=>x.remove());
+ const v=document.createElement('div');v.className='bossveil';
+ v.innerHTML=`<div class="bossbox"><h2>⚠️ BOSS 降臨 ⚠️</h2><div class="bossbar"><i id="bossHP"></i></div><div class="bosshelp">5秒で10回しばけ！</div><img id="bossTap" src="BOSS.PNG" alt="ボス"></div>`;
+ stage.appendChild(v);let hp=10,left=5;
+ const boss=$('#bossTap'),help=v.querySelector('.bosshelp');
+ boss.addEventListener('pointerdown',ev=>{
+  if(hp<=0)return; hp--; $('#bossHP').style.width=(hp*10)+'%'; stage.classList.add('shake');setTimeout(()=>stage.classList.remove('shake'),120);
+  floatText('いてっ！',ev.clientX,ev.clientY);
+  if(hp===0){score+=100;stats.boss=1;updateHud();help.textContent='撃破！ +100点　覚えとけよーー！';setTimeout(()=>{v.remove();if(running)spawnTimer=setInterval(spawn,500)},900)}
+ });
+ const bt=setInterval(()=>{left--;if(hp>0)help.textContent=`あと${left}秒！ 残り${hp}発`;if(left<=0){clearInterval(bt);if(hp>0){help.textContent='逃げられたーー！';setTimeout(()=>{v.remove();if(running)spawnTimer=setInterval(spawn,500)},700)} }},1000);
+}
+function finish(){
+ if(!running)return;running=false;clearInterval(spawnTimer);clearInterval(countTimer);stage.innerHTML='';game.style.display='none';result.style.display='block';
+ $('#finalScore').textContent=score+'点';
+ let j=score<=50?'ヘビに気ぃ遣いすぎ。':score<=150?'まあまあ仕留めた。':score<=250?'ヘビ界で指名手配。':'もう山に入らん方がええ。';
+ $('#judge').textContent=player.name+'判定：'+j;
+ $('#breakdown').innerHTML=`🐍 ヘビ　${stats.snake}匹 × 10点<br>🪳 ゴキブリ　${stats.roach}匹 × 3点<br>🌼 みろくまん誤爆　${stats.miroku}回 × −30点<br>👑 ボス撃破　${stats.boss?'成功 +100点':'失敗'}<br><span class="small">※得点はゲーム内の遊び用です。</span>`;
+}
+})();
+</script>
+</body>
+</html>
